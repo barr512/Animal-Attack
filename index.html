@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090c13">
+  <title>Animal Attack</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="app">
+    <section id="setup" class="setup-screen">
+      <div class="title-lockup">
+        <p class="eyebrow">Brent Short's original card game</p>
+        <h1>Animal<br><span>Attack</span></h1>
+        <p class="intro">Two animals enter the arena. Support changes the fight. Defense decides who survives.</p>
+      </div>
+      <form id="setupForm" class="setup-panel">
+        <label>Player 1<input id="player1" value="Player 1" maxlength="18"></label>
+        <label>Player 2<input id="player2" value="Player 2" maxlength="18"></label>
+        <button class="primary" type="submit">Enter the arena</button>
+        <button id="catalogBtn" class="ghost" type="button">View all 97 cards</button>
+      </form>
+    </section>
+
+    <section id="game" class="game-screen hidden" aria-live="polite">
+      <header class="game-header">
+        <button id="menuBtn" class="icon-btn" aria-label="Game menu">☰</button>
+        <div><span>Animal Attack</span><small id="turnLabel"></small></div>
+        <button id="logBtn" class="icon-btn" aria-label="Battle history">↺</button>
+      </header>
+
+      <section class="arena">
+        <div id="opponentZone" class="fighter-zone opponent-zone"></div>
+        <div class="arena-core">
+          <div class="ember ember-a"></div><div class="ember ember-b"></div>
+          <div id="phaseMessage" class="phase-message"></div>
+          <div id="playedCards" class="played-cards"></div>
+        </div>
+        <div id="playerZone" class="fighter-zone player-zone"></div>
+      </section>
+
+      <nav class="action-dock">
+        <button id="supportBtn"><span class="dock-icon support">+</span><b>Support</b><small id="supportCount"></small></button>
+        <button id="attackBtn" class="attack-action"><span class="dock-icon attack">⚔</span><b>Attack</b><small>Choose basic or special</small></button>
+        <button id="defenseBtn"><span class="dock-icon defense">⬟</span><b>Defense</b><small id="defenseCount"></small></button>
+      </nav>
+    </section>
+  </main>
+
+  <div id="scrim" class="scrim hidden"></div>
+  <aside id="drawer" class="drawer hidden" aria-label="Card drawer"></aside>
+  <section id="modal" class="modal hidden" role="dialog" aria-modal="true"></section>
+  <section id="passScreen" class="pass-screen hidden">
+    <p>Pass the device to</p><h2 id="passName"></h2><button id="passBtn" class="primary">I'm ready</button>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
