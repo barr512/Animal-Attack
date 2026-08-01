@@ -35,10 +35,11 @@ function active(index){return state.players[index].attacks[state.players[index].
 function cardOfAttack(index){return CARD_BY_ID[active(index).id];}
 function aliveAttackCount(index){return state.players[index].attacks.filter(a=>!a.dead).length;}
 function opponentOf(i){return i===0?1:0;}
-function heal(player,amount){const before=active(player).hearts;active(player).hearts=Math.min(maxHearts,active(player).hearts+amount);return active(player).hearts-before;}
+function heal(player,amount){const before=active(player).hearts;active(player).hearts=Math.min(maxHearts,active(player).hearts+amount);const gained=active(player).hearts-before;if(gained&&state?.context?.heartRewards)state.context.heartRewards[player]+=gained;return gained;}
 function lose(player,amount){const before=active(player).hearts;active(player).hearts=Math.max(0,active(player).hearts-amount);return before-active(player).hearts;}
 function log(message){state.log.unshift(message);}
-function draw(type,player,count=1){const deck=type==="support"?state.supportDeck:state.defenseDeck, discard=type==="support"?state.supportDiscard:state.defenseDiscard, hand=state.players[player][type];for(let i=0;i<count;i++){if(!deck.length&&discard.length){deck.push(...shuffle(discard.splice(0)));}if(deck.length&&hand.length<3)hand.push(deck.shift());}}
+function recordCardReward(ctx,player,type,count=1){if(ctx?.cardRewards)ctx.cardRewards[player][type]+=count;}
+function draw(type,player,count=1,reward=false){const deck=type==="support"?state.supportDeck:state.defenseDeck, discard=type==="support"?state.supportDiscard:state.defenseDiscard, hand=state.players[player][type];let drawn=0;for(let i=0;i<count;i++){if(!deck.length&&discard.length){deck.push(...shuffle(discard.splice(0)));}if(deck.length&&hand.length<3){hand.push(deck.shift());drawn++;}}if(reward&&drawn)recordCardReward(state.context,player,type,drawn);return drawn;}
 function randomTake(hand){return hand.length?hand.splice(Math.floor(Math.random()*hand.length),1)[0]:null;}
 function discardRandom(type,player){const hand=state.players[player][type],id=randomTake(hand);if(id)(type==="support"?state.supportDiscard:state.defenseDiscard).push(id);return id;}
 
@@ -74,7 +75,7 @@ function render(){
 function beginTurn(){
   if(state.winner!==null)return; const p=state.players[state.turn];
   if(p.skipTurns>0){p.skipTurns--;log(`${p.name} loses this turn.`);state.turn=opponentOf(state.turn);passTo(state.turn,beginTurn);return;}
-  state.viewer=state.turn;state.phase="attack";state.selectedSupport=null;state.selectedSupportChoice=0;state.selectedAttackMode=null;state.playedDefense=null;state.forcedDefense=null;render();
+  state.context=null;state.viewer=state.turn;state.phase="attack";state.selectedSupport=null;state.selectedSupportChoice=0;state.selectedAttackMode=null;state.playedDefense=null;state.forcedDefense=null;render();
 }
 
 function passTo(player,callback){state.viewer=player;render();el.passName.textContent=state.players[player].name;el.pass.classList.remove("hidden");passAction=()=>{el.pass.classList.add("hidden");callback();};}
@@ -97,7 +98,7 @@ function openAttack(){const a=active(state.turn),c=CARD_BY_ID[a.id],specialAvail
 
 function declareAttack(mode){closeDrawer();state.selectedAttackMode=mode;const attackCard=cardOfAttack(state.turn);if(mode==="special"&&attackCard.choices){showChoices(attackCard.name,attackCard.choices,(choice)=>{state.attackChoice=choice;closeModal();prepareAttack();});}else{state.attackChoice=0;prepareAttack();}}
 
-function makeContext(){const ai=state.turn,di=opponentOf(ai);return {ai,di,attacker:state.players[ai],defender:state.players[di],attack:cardOfAttack(ai),support:state.selectedSupport?CARD_BY_ID[state.selectedSupport]:null,defense:null,isSpecial:state.selectedAttackMode==="special",power:1,block:0,counter:false,allowDefense:true,noAttack:false,attackerGain:0,defenderGain:0,damage:0,killed:false,defensePlayed:false,preventCounter:false,noDefenseDraw:false,extraSupport:0,extraDefense:0,notes:[],snapshot:clone(state.players)};}
+function makeContext(){const ai=state.turn,di=opponentOf(ai);return {ai,di,attacker:state.players[ai],defender:state.players[di],attack:cardOfAttack(ai),support:state.selectedSupport?CARD_BY_ID[state.selectedSupport]:null,defense:null,isSpecial:state.selectedAttackMode==="special",power:1,block:0,counter:false,allowDefense:true,noAttack:false,attackerGain:0,defenderGain:0,heartRewards:[0,0],cardRewards:[{support:0,defense:0},{support:0,defense:0}],damage:0,killed:false,defensePlayed:false,preventCounter:false,noDefenseDraw:false,extraSupport:0,extraDefense:0,notes:[],snapshot:clone(state.players)};}
 
 function prepareAttack(){const ctx=makeContext();state.context=ctx;if(ctx.isSpecial){active(ctx.ai).specialUsed=true;applyAttackSpecial(ctx,ctx.attack.effect);}applySupportPre(ctx);if(ctx.paused)return;if(ctx.defender.defenseBlockedNext){ctx.allowDefense=false;ctx.defender.defenseBlockedNext=false;}if(ctx.noAttack){resolveAttack(ctx,null);return;}if(!ctx.allowDefense||!ctx.defender.defense.length){resolveAttack(ctx,null);return;}state.phase="defense";passTo(ctx.di,()=>{render();openDefense();});}
 
@@ -122,7 +123,7 @@ function applySupportPre(ctx){if(!ctx.support)return;const e=ctx.support.effect,
   case"eggcited":if(active(ctx.ai).hearts<active(ctx.di).hearts)ctx.power=2;break;case"highScorpion":ctx.forcedDefense=state.defenseDiscard.pop()||state.defenseDeck.shift()||null;state.forcedDefense=ctx.forcedDefense;ctx.noDefenseDraw=true;break;
   case"octopurse":if(active(ctx.di).hearts===3)ctx.allowDefense=false;break;case"slothWrath":returnRandomDefense(ctx.di);break;case"veryEmusing":if(active(ctx.ai).hearts===1)ctx.allowDefense=false;break;
   case"telephant":active(ctx.ai).specialUsed=false;break;case"superMonkey":ctx.attackerGain+=heal(ctx.ai,1);ctx.preventCounter=true;break;
-  case"geckommander":if(ctx.attacker.support.length<2){const id=randomTake(ctx.defender.support);if(id)ctx.attacker.support.push(id);}if(ctx.attacker.defense.length<2){const id=randomTake(ctx.defender.defense);if(id)ctx.attacker.defense.push(id);}break;
+  case"geckommander":if(ctx.attacker.support.length<2){const id=randomTake(ctx.defender.support);if(id){ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}}if(ctx.attacker.defense.length<2){const id=randomTake(ctx.defender.defense);if(id){ctx.attacker.defense.push(id);recordCardReward(ctx,ctx.ai,"defense");}}break;
   case"immunityDove":ctx.preventCounter=true;if(active(ctx.ai).hearts<2)ctx.allowDefense=false;break;case"combOver":ctx.attackerGain+=heal(ctx.ai,1);break;
   case"brokenSparrow":if(active(ctx.ai).hearts<2)ctx.attackerGain+=heal(ctx.ai,1);break;case"goatastic":case"starkRaven":ctx.power=2;break;
   case"bombsAway":swapRandomDefense(ctx.ai,ctx.di);break;case"slobster":ctx.defenderGain+=heal(ctx.di,1);chooseOwnDefenseToReturn(ctx);break;
@@ -143,7 +144,7 @@ function resolveAttack(ctx,defense){
   if(ctx.support?.effect==="warHog"&&defense){if(["spayingMantis","barack","oldWhale","scowlingOwl","toucan","counterBattack","flamingoalie","starwish","poleVulture","flowBackwards"].includes(defense.effect))ctx.attackerGain+=heal(ctx.ai,1);else ctx.power=2;}
   if(ctx.support?.effect==="sadHamster"&&defense)ctx.attackerGain+=heal(ctx.ai,2);
   if(ctx.support?.effect==="wellDung"&&defense)heal(ctx.ai,99);
-  if(ctx.support?.effect==="pantryRaid"&&defense)draw("support",ctx.di,1);
+  if(ctx.support?.effect==="pantryRaid"&&defense)draw("support",ctx.di,1,true);
   if(ctx.support?.effect==="mongooseGoose"&&defense)ctx.flags={...(ctx.flags||{}),mongoose:true};
   if(ctx.support?.effect==="blastypus"&&defense)ctx.noDefenseDraw=true;
   if(ctx.support?.effect==="centipede"&&defense)ctx.defender.defenseBlockedNext=true;
@@ -175,11 +176,11 @@ function applyDefense(ctx,d){const e=d.effect,support=!!ctx.support,basic=!ctx.i
   case"lordAlfred":if(basic)ctx.block=1;break;case"hipposnotamus":ctx.block=1;break;case"flowBackwards":if(support)ctx.block=1;break;
 }}
 
-function applyPost(ctx){const e=ctx.support?.effect;if(e==="dragonQueen"&&!ctx.damage)draw("defense",ctx.ai);if(e==="youreShrewed"&&ctx.killed)heal(ctx.ai,2);if(e==="zebra"&&ctx.damage)heal(ctx.ai,1);if(e==="motherDucker"&&ctx.damage)heal(ctx.ai,99);if(e==="skunkzilla"&&active(ctx.di).hearts<active(ctx.ai).hearts)ctx.extraSupport++;if(e==="stupidThanksgiving"&&ctx.damage)heal(ctx.ai,1);if(e==="stupidThanksgiving"&&ctx.killed)lose(ctx.ai,1);if(e==="combOver"&&!ctx.damage)heal(ctx.ai,1);if(e==="sodaSquirrel"){if(!ctx.damage)heal(ctx.ai,1);else if(ctx.damage===1)lose(ctx.ai,1);}if(e==="trashRaider"&&!ctx.damage)heal(ctx.ai,1);if(ctx.flags?.mongoose&&active(ctx.ai).hearts>0)heal(ctx.ai,99);if(ctx.flags?.dan&&ctx.killed)lose(ctx.ai,1);
-  if(ctx.defense?.effect==="barack"){heal(ctx.ai,1);heal(ctx.di,1);}if(ctx.flags?.swapEnd){const t=active(ctx.ai).hearts;active(ctx.ai).hearts=active(ctx.di).hearts;active(ctx.di).hearts=t;}if(ctx.flags?.giveSupport){const id=randomTake(ctx.defender.support);if(id&&ctx.attacker.support.length<3)ctx.attacker.support.push(id);}if(ctx.flags?.drawSupport)draw("support",ctx.di);
+function applyPost(ctx){const e=ctx.support?.effect;if(e==="dragonQueen"&&!ctx.damage)draw("defense",ctx.ai,1,true);if(e==="youreShrewed"&&ctx.killed)heal(ctx.ai,2);if(e==="zebra"&&ctx.damage)heal(ctx.ai,1);if(e==="motherDucker"&&ctx.damage)heal(ctx.ai,99);if(e==="skunkzilla"&&active(ctx.di).hearts<active(ctx.ai).hearts)ctx.extraSupport++;if(e==="stupidThanksgiving"&&ctx.damage)heal(ctx.ai,1);if(e==="stupidThanksgiving"&&ctx.killed)lose(ctx.ai,1);if(e==="combOver"&&!ctx.damage)heal(ctx.ai,1);if(e==="sodaSquirrel"){if(!ctx.damage)heal(ctx.ai,1);else if(ctx.damage===1)lose(ctx.ai,1);}if(e==="trashRaider"&&!ctx.damage)heal(ctx.ai,1);if(ctx.flags?.mongoose&&active(ctx.ai).hearts>0)heal(ctx.ai,99);if(ctx.flags?.dan&&ctx.killed)lose(ctx.ai,1);
+  if(ctx.defense?.effect==="barack"){heal(ctx.ai,1);heal(ctx.di,1);}if(ctx.flags?.swapEnd){const t=active(ctx.ai).hearts;active(ctx.ai).hearts=active(ctx.di).hearts;active(ctx.di).hearts=t;}if(ctx.flags?.giveSupport){const id=randomTake(ctx.defender.support);if(id&&ctx.attacker.support.length<3){ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}}if(ctx.flags?.drawSupport)draw("support",ctx.di,1,true);
 }
 
-function consumeCards(ctx){if(ctx.support){const i=ctx.attacker.support.indexOf(ctx.support.id);if(i>=0)ctx.attacker.support.splice(i,1);if(ctx.flags?.stealSupport)ctx.defender.support.push(ctx.support.id);else state.supportDiscard.push(ctx.support.id);}if(ctx.defense){if(ctx.flags?.keepDefense){if(!ctx.defender.defense.includes(ctx.defense.id))ctx.defender.defense.push(ctx.defense.id);}else state.defenseDiscard.push(ctx.defense.id);}if(ctx.support?.effect==="giftHorse"){const id=randomTake(ctx.defender.support);if(id&&ctx.attacker.support.length<3)ctx.attacker.support.push(id);}if(ctx.support?.effect==="fishStick"&&ctx.defensePlayed)ctx.extraDefense++;}
+function consumeCards(ctx){if(ctx.support){const i=ctx.attacker.support.indexOf(ctx.support.id);if(i>=0)ctx.attacker.support.splice(i,1);if(ctx.flags?.stealSupport){ctx.defender.support.push(ctx.support.id);recordCardReward(ctx,ctx.di,"support");}else state.supportDiscard.push(ctx.support.id);}if(ctx.defense){if(ctx.flags?.keepDefense){if(!ctx.defender.defense.includes(ctx.defense.id))ctx.defender.defense.push(ctx.defense.id);}else state.defenseDiscard.push(ctx.defense.id);}if(ctx.support?.effect==="giftHorse"){const id=randomTake(ctx.defender.support);if(id&&ctx.attacker.support.length<3){ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}}if(ctx.support?.effect==="fishStick"&&ctx.defensePlayed)ctx.extraDefense++;}
 function handleDefeats(ctx){if(ctx.support?.effect==="eightLives"&&(ctx.damage||active(ctx.ai).hearts<3)){killActive(ctx.ai,true);killActive(ctx.di,true);return;}if(active(ctx.di).hearts<=0){killActive(ctx.di,false);if(ctx.flags?.noBunny&&aliveAttackCount(ctx.di))killActive(ctx.di,false);}if(active(ctx.ai).hearts<=0)killActive(ctx.ai,false);}
 function killActive(player,unrevivable){const p=state.players[player],a=active(player);if(a.dead)return;a.dead=true;a.unrevivable=unrevivable;p.deadAttacks.push(a.id);const next=p.attacks.findIndex(x=>!x.dead);if(next>=0){p.active=next;p.attacks[next].hearts=3;p.attacks[next].specialUsed=false;while(p.support.length<2)draw("support",player);while(p.defense.length<2)draw("defense",player);log(`${p.name} sends in ${CARD_BY_ID[p.attacks[next].id].name}.`);}else{state.winner=opponentOf(player);state.phase="over";}}
 function reviveAttack(player){const p=state.players[player],a=p.attacks.find(x=>x.dead&&!x.unrevivable);if(a){a.dead=false;a.hearts=3;a.specialUsed=false;p.deadAttacks=p.deadAttacks.filter(id=>id!==a.id);}}
@@ -189,10 +190,13 @@ function swapRandomDefense(a,b){const pa=state.players[a],pb=state.players[b];if
 
 function finishTurn(ctx){
   if(ctx.flags?.snail&&ctx.killed)lose(ctx.ai,1);if(ctx.flags?.gator&&ctx.defensePlayed)heal(ctx.ai,1);
-  if(!ctx.noDefenseDraw&&ctx.defensePlayed)draw("defense",ctx.di,1);draw("defense",ctx.di,ctx.extraDefense);if(ctx.support)draw("support",ctx.ai,1);draw("support",ctx.ai,ctx.extraSupport);
+  if(!ctx.noDefenseDraw&&ctx.defensePlayed)draw("defense",ctx.di,1);draw("defense",ctx.di,ctx.extraDefense,true);if(ctx.support)draw("support",ctx.ai,1);draw("support",ctx.ai,ctx.extraSupport,true);
   log(`${ctx.attacker.name}'s ${ctx.attack.name} dealt ${ctx.damage} heart${ctx.damage===1?"":"s"}${ctx.defense?` against ${ctx.defense.name}`:""}.`);
   state.phase=state.winner!==null?"over":"result";state.viewer=ctx.ai;render();
-  const summary=state.winner!==null?`<h2>${state.players[state.winner].name} wins!</h2><p>The arena belongs to ${cardOfAttack(state.winner).name}.</p><div class="modal-actions"><button class="primary" data-new>New game</button></div>`:`<h2>Attack resolved</h2><p>${ctx.attacker.name} dealt <b>${ctx.damage}</b> heart${ctx.damage===1?"":"s"}. ${ctx.defense?`${ctx.defender.name} used ${ctx.defense.name}.`:"No Defense was played."}</p><div class="modal-actions"><button class="primary" data-next>Next turn</button></div>`;
+  const rewards=[];state.players.forEach((p,i)=>{const hearts=ctx.heartRewards[i],support=ctx.cardRewards[i].support,defense=ctx.cardRewards[i].defense;if(hearts)rewards.push(`<li><b>${p.name}</b> gained ${hearts} heart${hearts===1?"":"s"}.</li>`);if(support)rewards.push(`<li><b>${p.name}</b> gained ${support} additional Support card${support===1?"":"s"}.</li>`);if(defense)rewards.push(`<li><b>${p.name}</b> gained ${defense} additional Defense card${defense===1?"":"s"}.</li>`);});
+  const rewardSummary=rewards.length?`<div class="result-rewards"><h3>Ability rewards</h3><ul>${rewards.join("")}</ul></div>`:`<div class="result-rewards quiet">No additional hearts or cards were gained.</div>`;
+  rewards.forEach(item=>log(item.replace(/<[^>]+>/g,"")));
+  const summary=state.winner!==null?`<h2>${state.players[state.winner].name} wins!</h2><p>The arena belongs to ${cardOfAttack(state.winner).name}.</p>${rewardSummary}<div class="modal-actions"><button class="primary" data-new>New game</button></div>`:`<h2>Attack resolved</h2><p>${ctx.attacker.name} dealt <b>${ctx.damage}</b> heart${ctx.damage===1?"":"s"}. ${ctx.defense?`${ctx.defender.name} used ${ctx.defense.name}.`:"No Defense was played."}</p>${rewardSummary}<div class="modal-actions"><button class="primary" data-next>Next turn</button></div>`;
   showModal(summary,false);if(state.winner!==null)el.modal.querySelector("[data-new]").onclick=()=>location.reload();else el.modal.querySelector("[data-next]").onclick=()=>{closeModal();state.turn=opponentOf(state.turn);passTo(state.turn,beginTurn);};
 }
 
