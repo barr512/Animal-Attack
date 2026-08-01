@@ -166,17 +166,18 @@ function resolveAttack(ctx,defense){
 
 function playBattleAnimation(ctx,done){
   const character=animatedCharacters[ctx.attack.id];if(!character){done();return;}
-  const direction=ctx.ai===0?"from-left":"from-right",target=cardOfAttack(ctx.di),blocked=ctx.damage===0;
+  const direction=ctx.ai===0?"from-left":"from-right",target=cardOfAttack(ctx.di),defenderCharacter=animatedCharacters[target.id],blocked=ctx.damage===0,attackerStarted=ctx.snapshot[ctx.ai].attacks[ctx.snapshot[ctx.ai].active].hearts,attackerLost=active(ctx.ai).hearts<attackerStarted;
   el.battle.className=`battle-scene ${direction} ${character.style}`;
-  el.battle.innerHTML=`<button class="battle-skip" type="button">Skip</button>${battleCard(ctx.attack,"battle-origin")}${battleCard(target,"battle-target")}${ctx.defense?battleCard(ctx.defense,"battle-defense"):""}<div class="battle-character"><img src="${character.ready}" alt="${ctx.attack.name} emerges from its card"></div><div class="battle-impact"></div><div class="battle-outcome"></div>`;
-  const actor=el.battle.querySelector(".battle-character"),actorImage=actor.querySelector("img"),targetCard=el.battle.querySelector(".battle-target"),defenseCard=el.battle.querySelector(".battle-defense"),outcome=el.battle.querySelector(".battle-outcome");
+  el.battle.innerHTML=`<button class="battle-skip" type="button">Skip</button>${battleCard(ctx.attack,"battle-origin")}${battleCard(target,"battle-target")}${ctx.defense?battleCard(ctx.defense,"battle-defense"):""}<div class="battle-character"><img src="${character.ready}" alt="${ctx.attack.name} emerges from its card"></div>${defenderCharacter?`<div class="battle-defender-character"><img src="${defenderCharacter.ready}" alt="${target.name} emerges to face the attack"></div>`:""}<div class="battle-impact"></div><div class="battle-outcome"></div>`;
+  const actor=el.battle.querySelector(".battle-character"),actorImage=actor.querySelector("img"),defenderActor=el.battle.querySelector(".battle-defender-character"),defenderImage=defenderActor?.querySelector("img"),targetCard=el.battle.querySelector(".battle-target"),defenseCard=el.battle.querySelector(".battle-defense"),outcome=el.battle.querySelector(".battle-outcome");
   let finished=false;const timers=[];const later=(fn,ms)=>timers.push(setTimeout(fn,ms));const finish=()=>{if(finished)return;finished=true;timers.forEach(clearTimeout);el.battle.classList.add("ending");setTimeout(()=>{el.battle.className="battle-scene hidden";el.battle.innerHTML="";done();},280);};
   el.battle.querySelector(".battle-skip").onclick=finish;
   requestAnimationFrame(()=>el.battle.classList.add("started"));
-  later(()=>{if(defenseCard)defenseCard.classList.add("presented");actorImage.src=character.attack;actor.classList.add("attacking");},720);
-  later(()=>{el.battle.classList.add("impacting");if(blocked){targetCard.classList.add("blocked");outcome.textContent=ctx.defense?`${ctx.defense.name} blocks the attack!`:"Attack causes no damage!";}else{targetCard.classList.add(ctx.killed?"defeated":"hit");outcome.textContent=`${target.name} loses ${ctx.damage} heart${ctx.damage===1?"":"s"}!`;}outcome.classList.add("shown");if(blocked||active(ctx.ai).hearts===0){actorImage.src=character.recoil;actor.classList.add("recoiling");}else actor.classList.add("returning");},1750);
-  later(()=>{if(active(ctx.ai).hearts===0)el.battle.querySelector(".battle-origin").classList.add("defeated");},2400);
-  later(finish,3900);
+  later(()=>{if(defenseCard)defenseCard.classList.add("presented");},1450);
+  later(()=>{actorImage.src=character.attack;actor.classList.add("attacking");},2200);
+  later(()=>{el.battle.classList.add("impacting");if(blocked){targetCard.classList.add("blocked");defenderActor?.classList.add("blocked");outcome.textContent=ctx.defense?`${ctx.defense.name} blocks the attack!`:"Attack causes no damage!";actorImage.src=character.ready;actor.classList.add("repelled");}else{targetCard.classList.add(ctx.killed?"defeated":"hit");if(defenderImage)defenderImage.src=defenderCharacter.recoil;defenderActor?.classList.add(ctx.killed?"defeated":"hit");outcome.textContent=`${target.name} loses ${ctx.damage} heart${ctx.damage===1?"":"s"}!`;if(attackerLost){actorImage.src=character.recoil;actor.classList.add("recoiling");}else actor.classList.add("returning");}outcome.classList.add("shown");},3550);
+  later(()=>{if(active(ctx.ai).hearts===0)el.battle.querySelector(".battle-origin").classList.add("defeated");},5000);
+  later(finish,7200);
 }
 
 function chooseKangaroothlessSupport(ctx){const items=ctx.defender.support.map(id=>CARD_BY_ID[id]);showModal(`<h2>Kangaroothless</h2><p>${ctx.defender.name}, choose which Support card to give ${ctx.attacker.name}.</p><div class="card-grid">${items.map(c=>cardButton(c,`data-kangaroo-give="${c.id}"`,true)).join("")}</div>`,false);el.modal.querySelectorAll("[data-kangaroo-give]").forEach(b=>b.onclick=()=>{const i=ctx.defender.support.indexOf(b.dataset.kangarooGive);if(i>=0){const id=ctx.defender.support.splice(i,1)[0];ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}closeModal();completeResolvedAttack(ctx);});}
