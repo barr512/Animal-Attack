@@ -111,7 +111,7 @@ function applyAttackSpecial(ctx,effect){switch(effect){
   case"gorilla":ctx.power=2;ctx.allowDefense=false;ctx.flags={gorilla:true};break;case"mooster":ctx.attackerGain+=heal(ctx.ai,1);discardRandom("defense",ctx.di);break;
   case"prawnold":heal(ctx.ai,99);reviveAttack(ctx.ai);break;case"kellen":ctx.attackerGain+=heal(ctx.ai,1);if(aliveAttackCount(ctx.di)>1)ctx.power=2;break;
   case"bullShip":active(ctx.di).specialDisabled=true;break;case"weSuck":if(active(ctx.di).hearts>1)ctx.attackerGain+=heal(ctx.ai,1);break;
-  case"bassMasher":if(state.attackChoice===0){ctx.attackerGain+=heal(ctx.ai,1);ctx.noAttack=true;}else if(active(ctx.di).hearts===2)ctx.power=2;break;
+  case"bassMasher":if(state.attackChoice===0)ctx.attackerGain+=heal(ctx.ai,1);else if(active(ctx.di).hearts===2)ctx.power=2;break;
 }}
 
 function applySupportPre(ctx){if(!ctx.support)return;const e=ctx.support.effect,choice=state.selectedSupportChoice;switch(e){
