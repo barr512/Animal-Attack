@@ -175,7 +175,7 @@ function playBattleAnimation(ctx,done){
   el.battle.querySelector(".battle-skip").onclick=finish;
   requestAnimationFrame(()=>el.battle.classList.add("started"));
   later(()=>{if(defenseCard)defenseCard.classList.add("presented");},1450);
-  const ranged=character.style==="kellen",strikeAt=ranged?2500:3150,impactAt=ranged?3400:3450;
+  const ranged=character.style==="kellen",strikeAt=ranged?2500:2825,impactAt=ranged?3400:3450;
   later(()=>actor.classList.add("attacking"),2100);
   later(()=>{actorImage.src=character.attack;actor.classList.add("striking");if(ranged)el.battle.classList.add("projectile-fired");},strikeAt);
   later(()=>{el.battle.classList.add("impacting");if(blocked){targetCard.classList.add("blocked");defenderActor?.classList.add("blocked");outcome.textContent=ctx.defense?`${ctx.defense.name} blocks the attack!`:"Attack causes no damage!";later(()=>{actorImage.src=character.ready;actor.classList.add("repelled");},220);}else{targetCard.classList.add(ctx.killed?"defeated":"hit");if(defenderImage)defenderImage.src=defenderCharacter.recoil;defenderActor?.classList.add(ctx.killed?"defeated":"hit");outcome.textContent=`${target.name} loses ${ctx.damage} heart${ctx.damage===1?"":"s"}!`;later(()=>{if(attackerLost){actorImage.src=character.recoil;actor.classList.add("recoiling");}else{actorImage.src=character.ready;actor.classList.add("returning");}},300);}outcome.classList.add("shown");},impactAt);
