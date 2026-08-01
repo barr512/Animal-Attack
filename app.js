@@ -5,7 +5,7 @@ const clone = (v) => structuredClone(v);
 const shuffle = (items) => { const a=[...items]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
 const maxHearts = 3;
 
-const el = {setup:$("#setup"),game:$("#game"),arena:$(".arena"),setupForm:$("#setupForm"),p1:$("#player1"),p2:$("#player2"),turn:$("#turnLabel"),phase:$("#phaseMessage"),opp:$("#opponentZone"),player:$("#playerZone"),played:$("#playedCards"),support:$("#supportBtn"),attack:$("#attackBtn"),defense:$("#defenseBtn"),supportCount:$("#supportCount"),defenseCount:$("#defenseCount"),scrim:$("#scrim"),drawer:$("#drawer"),modal:$("#modal"),pass:$("#passScreen"),passName:$("#passName"),passBtn:$("#passBtn"),log:$("#logBtn"),menu:$("#menuBtn"),catalog:$("#catalogBtn")};
+const el = {setup:$("#setup"),game:$("#game"),arena:$(".arena"),battle:$("#battleScene"),setupForm:$("#setupForm"),p1:$("#player1"),p2:$("#player2"),turn:$("#turnLabel"),phase:$("#phaseMessage"),opp:$("#opponentZone"),player:$("#playerZone"),played:$("#playedCards"),support:$("#supportBtn"),attack:$("#attackBtn"),defense:$("#defenseBtn"),supportCount:$("#supportCount"),defenseCount:$("#defenseCount"),scrim:$("#scrim"),drawer:$("#drawer"),modal:$("#modal"),pass:$("#passScreen"),passName:$("#passName"),passBtn:$("#passBtn"),log:$("#logBtn"),menu:$("#menuBtn"),catalog:$("#catalogBtn")};
 
 let state=null, passAction=null;
 
@@ -13,16 +13,22 @@ const attackTraits={
   "dino-might":{fly:true},"snailzooka":{noLegs:true},"joe-flyden":{fly:true},"bad-asp":{noLegs:true},"lady-thug":{fly:true},"worm-and-peace":{noLegs:true},"bull-ship":{noLegs:true},"we-suck":{fly:true},"bass-masher":{noLegs:true}
 };
 
+const animatedCharacters={
+  "gorilla-warfare":{ready:"assets/characters/gorilla-warfare-ready.webp",attack:"assets/characters/gorilla-warfare-attack.webp",recoil:"assets/characters/gorilla-warfare-recoil.webp",style:"gorilla"},
+  "kellen-me-softly":{ready:"assets/characters/kellen-me-softly-ready.webp",attack:"assets/characters/kellen-me-softly-attack.webp",recoil:"assets/characters/kellen-me-softly-recoil.webp",style:"kellen"}
+};
+
 function freshPlayer(name,index,attackDeck,supportDeck,defenseDeck){
   return {name,index,attacks:attackDeck.splice(0,2).map(id=>({id,hearts:3,specialUsed:false,specialDisabled:false,dead:false,unrevivable:false})),active:0,support:supportDeck.splice(0,2),defense:defenseDeck.splice(0,2),deadAttacks:[],skipTurns:0,defenseBlockedNext:false,glunicornStage:0};
 }
 
 function startGame(names){
-  const attacks=shuffle(ATTACK_CARDS.map(c=>c.id)), support=shuffle(SUPPORT_CARDS.map(c=>c.id)), defense=shuffle(DEFENSE_CARDS.map(c=>c.id));
+  const attacks=shuffle(ATTACK_CARDS.map(c=>c.id).filter(id=>!["gorilla-warfare","kellen-me-softly"].includes(id))), support=shuffle(SUPPORT_CARDS.map(c=>c.id)), defense=shuffle(DEFENSE_CARDS.map(c=>c.id));
   state={players:[],supportDeck:support,defenseDeck:defense,supportDiscard:[],defenseDiscard:[],turn:0,viewer:0,phase:"setup",selectedSupport:null,selectedSupportChoice:0,selectedAttackMode:null,forcedDefense:null,playedDefense:null,log:[],winner:null};
-  state.players=[freshPlayer(names[0],0,attacks,support,defense),freshPlayer(names[1],1,attacks,support,defense)];
+  const player1Attacks=["gorilla-warfare",attacks.shift()],player2Attacks=["kellen-me-softly",attacks.shift()];
+  state.players=[freshPlayer(names[0],0,player1Attacks,support,defense),freshPlayer(names[1],1,player2Attacks,support,defense)];
   el.setup.classList.add("hidden");el.game.classList.remove("hidden");
-  chooseStartingAttack(0);
+  beginTurn();
 }
 
 function chooseStartingAttack(playerIndex){
@@ -45,6 +51,7 @@ function discardRandom(type,player){const hand=state.players[player][type],id=ra
 
 function spriteStyle(c){const col=c.slot%3,row=Math.floor(c.slot/3),x=col===0?0:col===1?50:100,y=c.sheetRows===1?0:(row/(c.sheetRows-1))*100;return `--sheet:url('assets/sprites/sheet-${String(c.sheet).padStart(2,"0")}.webp');--size-y:${c.sheetRows*100}%;--x:${x}%;--y:${y}%`;}
 function art(c){return `<div class="card-art" style="${spriteStyle(c)}"></div>`;}
+function battleCard(c,className){return `<div class="battle-card ${className}">${art(c)}<span>${c.name}</span></div>`;}
 function cardButton(c,attrs="",compact=false){return `<button class="hand-card" ${attrs}> <div class="card-thumb">${art(c)}</div><h3>${c.name}</h3>${compact?"":`<p>${c.text}</p>`}</button>`;}
 function activeCardMarkup(playerIndex){const c=cardOfAttack(playerIndex);return `<button class="active-card" data-inspect="${c.id}" aria-label="Inspect ${c.name}">${art(c)}<span class="card-badge">${c.name}</span></button>`;}
 function heartsMarkup(n){return `<div class="hearts">${[0,1,2].map(i=>`<span class="heart ${i<n?"live":""}">♥</span>`).join("")}</div>`;}
@@ -154,8 +161,22 @@ function resolveAttack(ctx,defense){
   if(defense?.effect==="antaClaus"&&ctx.damage)lose(ctx.ai,1);
   if(ctx.flags?.gorilla)lose(ctx.ai,2);
   ctx.killed=active(ctx.di).hearts===0;
-  if(ctx.flags?.giveSupport&&ctx.defender.support.length){chooseKangaroothlessSupport(ctx);return;}
-  completeResolvedAttack(ctx);
+  playBattleAnimation(ctx,()=>{if(ctx.flags?.giveSupport&&ctx.defender.support.length)chooseKangaroothlessSupport(ctx);else completeResolvedAttack(ctx);});
+}
+
+function playBattleAnimation(ctx,done){
+  const character=animatedCharacters[ctx.attack.id];if(!character){done();return;}
+  const direction=ctx.ai===0?"from-left":"from-right",target=cardOfAttack(ctx.di),blocked=ctx.damage===0;
+  el.battle.className=`battle-scene ${direction} ${character.style}`;
+  el.battle.innerHTML=`<button class="battle-skip" type="button">Skip</button>${battleCard(ctx.attack,"battle-origin")}${battleCard(target,"battle-target")}${ctx.defense?battleCard(ctx.defense,"battle-defense"):""}<div class="battle-character"><img src="${character.ready}" alt="${ctx.attack.name} emerges from its card"></div><div class="battle-impact"></div><div class="battle-outcome"></div>`;
+  const actor=el.battle.querySelector(".battle-character"),actorImage=actor.querySelector("img"),targetCard=el.battle.querySelector(".battle-target"),defenseCard=el.battle.querySelector(".battle-defense"),outcome=el.battle.querySelector(".battle-outcome");
+  let finished=false;const timers=[];const later=(fn,ms)=>timers.push(setTimeout(fn,ms));const finish=()=>{if(finished)return;finished=true;timers.forEach(clearTimeout);el.battle.classList.add("ending");setTimeout(()=>{el.battle.className="battle-scene hidden";el.battle.innerHTML="";done();},280);};
+  el.battle.querySelector(".battle-skip").onclick=finish;
+  requestAnimationFrame(()=>el.battle.classList.add("started"));
+  later(()=>{if(defenseCard)defenseCard.classList.add("presented");actorImage.src=character.attack;actor.classList.add("attacking");},720);
+  later(()=>{el.battle.classList.add("impacting");if(blocked){targetCard.classList.add("blocked");outcome.textContent=ctx.defense?`${ctx.defense.name} blocks the attack!`:"Attack causes no damage!";}else{targetCard.classList.add(ctx.killed?"defeated":"hit");outcome.textContent=`${target.name} loses ${ctx.damage} heart${ctx.damage===1?"":"s"}!`;}outcome.classList.add("shown");if(blocked||active(ctx.ai).hearts===0){actorImage.src=character.recoil;actor.classList.add("recoiling");}else actor.classList.add("returning");},1750);
+  later(()=>{if(active(ctx.ai).hearts===0)el.battle.querySelector(".battle-origin").classList.add("defeated");},2400);
+  later(finish,3900);
 }
 
 function chooseKangaroothlessSupport(ctx){const items=ctx.defender.support.map(id=>CARD_BY_ID[id]);showModal(`<h2>Kangaroothless</h2><p>${ctx.defender.name}, choose which Support card to give ${ctx.attacker.name}.</p><div class="card-grid">${items.map(c=>cardButton(c,`data-kangaroo-give="${c.id}"`,true)).join("")}</div>`,false);el.modal.querySelectorAll("[data-kangaroo-give]").forEach(b=>b.onclick=()=>{const i=ctx.defender.support.indexOf(b.dataset.kangarooGive);if(i>=0){const id=ctx.defender.support.splice(i,1)[0];ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}closeModal();completeResolvedAttack(ctx);});}
