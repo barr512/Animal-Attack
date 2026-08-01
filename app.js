@@ -5,7 +5,7 @@ const clone = (v) => structuredClone(v);
 const shuffle = (items) => { const a=[...items]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
 const maxHearts = 3;
 
-const el = {setup:$("#setup"),game:$("#game"),setupForm:$("#setupForm"),p1:$("#player1"),p2:$("#player2"),turn:$("#turnLabel"),phase:$("#phaseMessage"),opp:$("#opponentZone"),player:$("#playerZone"),played:$("#playedCards"),support:$("#supportBtn"),attack:$("#attackBtn"),defense:$("#defenseBtn"),supportCount:$("#supportCount"),defenseCount:$("#defenseCount"),scrim:$("#scrim"),drawer:$("#drawer"),modal:$("#modal"),pass:$("#passScreen"),passName:$("#passName"),passBtn:$("#passBtn"),log:$("#logBtn"),menu:$("#menuBtn"),catalog:$("#catalogBtn")};
+const el = {setup:$("#setup"),game:$("#game"),arena:$(".arena"),setupForm:$("#setupForm"),p1:$("#player1"),p2:$("#player2"),turn:$("#turnLabel"),phase:$("#phaseMessage"),opp:$("#opponentZone"),player:$("#playerZone"),played:$("#playedCards"),support:$("#supportBtn"),attack:$("#attackBtn"),defense:$("#defenseBtn"),supportCount:$("#supportCount"),defenseCount:$("#defenseCount"),scrim:$("#scrim"),drawer:$("#drawer"),modal:$("#modal"),pass:$("#passScreen"),passName:$("#passName"),passBtn:$("#passBtn"),log:$("#logBtn"),menu:$("#menuBtn"),catalog:$("#catalogBtn")};
 
 let state=null, passAction=null;
 
@@ -54,7 +54,15 @@ function render(){
   if(!state)return; const bottom=state.viewer,top=opponentOf(bottom);
   el.player.innerHTML=fighterMarkup(bottom,true);el.opp.innerHTML=fighterMarkup(top,false);
   el.turn.textContent=state.winner?`${state.players[state.winner].name} wins`:`Turn: ${state.players[state.turn].name}`;
-  const messages={attack:"Choose Support or attack without it",defense:`${state.players[state.viewer].name}: choose a Defense card`,result:"Attack resolved",setup:"Choose your attacker",over:"Battle complete"};
+  const attacker=state.turn,defender=opponentOf(attacker),battleActive=["attack","defense","result"].includes(state.phase);
+  [el.player,el.opp].forEach(zone=>zone.classList.remove("is-attacker","is-defender"));
+  const playerZoneFor=index=>index===bottom?el.player:el.opp;
+  if(battleActive){playerZoneFor(attacker).classList.add("is-attacker");playerZoneFor(defender).classList.add("is-defender");}
+  el.arena.classList.toggle("battle-active",battleActive);
+  el.arena.classList.toggle("attack-from-left",battleActive&&attacker===top);
+  el.arena.classList.toggle("attack-from-right",battleActive&&attacker===bottom);
+  const matchup=`${state.players[attacker].name} attacks → ${state.players[defender].name} defends`;
+  const messages={attack:`${matchup} — choose Support or attack`,defense:`${matchup} — choose Defense`,result:`${matchup} — resolved`,setup:"Choose your attacker",over:"Battle complete"};
   el.phase.textContent=messages[state.phase]||"";
   el.played.innerHTML=[state.selectedSupport?`<span class="played-pill support">Support: ${CARD_BY_ID[state.selectedSupport].name}</span>`:"",state.playedDefense?`<span class="played-pill defense">Defense: ${CARD_BY_ID[state.playedDefense].name}</span>`:""].join("");
   el.supportCount.textContent=`${state.players[bottom].support.length} cards`;el.defenseCount.textContent=`${state.players[bottom].defense.length} cards`;
