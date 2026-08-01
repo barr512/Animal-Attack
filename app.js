@@ -153,8 +153,12 @@ function resolveAttack(ctx,defense){
   if(defense?.effect==="antaClaus"&&ctx.damage)lose(ctx.ai,1);
   if(ctx.flags?.gorilla)lose(ctx.ai,2);
   ctx.killed=active(ctx.di).hearts===0;
-  applyPost(ctx);consumeCards(ctx);handleDefeats(ctx);finishTurn(ctx);
+  if(ctx.flags?.giveSupport&&ctx.defender.support.length){chooseKangaroothlessSupport(ctx);return;}
+  completeResolvedAttack(ctx);
 }
+
+function chooseKangaroothlessSupport(ctx){const items=ctx.defender.support.map(id=>CARD_BY_ID[id]);showModal(`<h2>Kangaroothless</h2><p>${ctx.defender.name}, choose which Support card to give ${ctx.attacker.name}.</p><div class="card-grid">${items.map(c=>cardButton(c,`data-kangaroo-give="${c.id}"`,true)).join("")}</div>`,false);el.modal.querySelectorAll("[data-kangaroo-give]").forEach(b=>b.onclick=()=>{const i=ctx.defender.support.indexOf(b.dataset.kangarooGive);if(i>=0){const id=ctx.defender.support.splice(i,1)[0];ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}closeModal();completeResolvedAttack(ctx);});}
+function completeResolvedAttack(ctx){applyPost(ctx);consumeCards(ctx);handleDefeats(ctx);finishTurn(ctx);}
 
 function applyDefense(ctx,d){const e=d.effect,support=!!ctx.support,basic=!ctx.isSpecial;switch(e){
   case"tortoise":ctx.block=support?99:(active(ctx.di).hearts<active(ctx.ai).hearts?1:0);break;case"kangaroothless":ctx.block=99;ctx.flags={...(ctx.flags||{}),giveSupport:true};break;
@@ -177,7 +181,7 @@ function applyDefense(ctx,d){const e=d.effect,support=!!ctx.support,basic=!ctx.i
 }}
 
 function applyPost(ctx){const e=ctx.support?.effect;if(e==="dragonQueen"&&!ctx.damage)draw("defense",ctx.ai,1,true);if(e==="youreShrewed"&&ctx.killed)heal(ctx.ai,2);if(e==="zebra"&&ctx.damage)heal(ctx.ai,1);if(e==="motherDucker"&&ctx.damage)heal(ctx.ai,99);if(e==="skunkzilla"&&active(ctx.di).hearts<active(ctx.ai).hearts)ctx.extraSupport++;if(e==="stupidThanksgiving"&&ctx.damage)heal(ctx.ai,1);if(e==="stupidThanksgiving"&&ctx.killed)lose(ctx.ai,1);if(e==="combOver"&&!ctx.damage)heal(ctx.ai,1);if(e==="sodaSquirrel"){if(!ctx.damage)heal(ctx.ai,1);else if(ctx.damage===1)lose(ctx.ai,1);}if(e==="trashRaider"&&!ctx.damage)heal(ctx.ai,1);if(ctx.flags?.mongoose&&active(ctx.ai).hearts>0)heal(ctx.ai,99);if(ctx.flags?.dan&&ctx.killed)lose(ctx.ai,1);
-  if(ctx.defense?.effect==="barack"){heal(ctx.ai,1);heal(ctx.di,1);}if(ctx.flags?.swapEnd){const t=active(ctx.ai).hearts;active(ctx.ai).hearts=active(ctx.di).hearts;active(ctx.di).hearts=t;}if(ctx.flags?.giveSupport){const id=randomTake(ctx.defender.support);if(id&&ctx.attacker.support.length<3){ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}}if(ctx.flags?.drawSupport)draw("support",ctx.di,1,true);
+  if(ctx.defense?.effect==="barack"){heal(ctx.ai,1);heal(ctx.di,1);}if(ctx.flags?.swapEnd){const t=active(ctx.ai).hearts;active(ctx.ai).hearts=active(ctx.di).hearts;active(ctx.di).hearts=t;}if(ctx.flags?.drawSupport)draw("support",ctx.di,1,true);
 }
 
 function consumeCards(ctx){if(ctx.support){const i=ctx.attacker.support.indexOf(ctx.support.id);if(i>=0)ctx.attacker.support.splice(i,1);if(ctx.flags?.stealSupport){ctx.defender.support.push(ctx.support.id);recordCardReward(ctx,ctx.di,"support");}else state.supportDiscard.push(ctx.support.id);}if(ctx.defense){if(ctx.flags?.keepDefense){if(!ctx.defender.defense.includes(ctx.defense.id))ctx.defender.defense.push(ctx.defense.id);}else state.defenseDiscard.push(ctx.defense.id);}if(ctx.support?.effect==="giftHorse"){const id=randomTake(ctx.defender.support);if(id&&ctx.attacker.support.length<3){ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}}if(ctx.support?.effect==="fishStick"&&ctx.defensePlayed)ctx.extraDefense++;}
