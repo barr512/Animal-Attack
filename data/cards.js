@@ -63,7 +63,7 @@ export const SUPPORT_CARDS = [
   card("support",12,0,"gift-horse","Gift Horse","Blind-steal a Support card from opponent at end of turn.","giftHorse"),
   card("support",12,1,"goatastic","Goatastic","2-heart basic attack.","goatastic"),
   card("support",12,2,"stark-raven-mad","Stark Raven Mad","2-heart basic attack.","starkRaven"),
-  card("support",12,3,"bombs-away","Bombs Away","Swap Defense card with opponent before attack or before opponent plays Defense card.","bombsAway",{choices:["Swap before attack","Arm swap for defense response"]}),
+  card("support",12,3,"bombs-away","Bombs Away","Swap a Defense card with opponent before opponent chooses a Defense card.","bombsAway"),
   card("support",12,4,"slobster","Slobster","Opponent returns Defense card to draw pile before attack and before Defense is played. Opponent gains 1 heart.","slobster"),
   card("support",12,5,"but-i-dont-lie","But, I Don't Lie","If holder has fewer than 3 hearts, opponent cannot play Defense card.","butIDontLie"),
   card("support",12,6,"trash-raider","Trash Raider","Gain 1 heart if opponent loses no hearts.","trashRaider"),
