@@ -80,7 +80,8 @@ function beginTurn(){
 function passTo(player,callback){state.viewer=player;render();el.passName.textContent=state.players[player].name;el.pass.classList.remove("hidden");passAction=()=>{el.pass.classList.add("hidden");callback();};}
 el.passBtn.onclick=()=>passAction?.();
 
-function showDrawer(title,body){el.drawer.innerHTML=`<div class="drawer-head"><h2>${title}</h2><button class="close-btn" data-close>×</button></div>${body}`;el.scrim.classList.remove("hidden");el.drawer.classList.remove("hidden");el.drawer.querySelector("[data-close]").onclick=closeDrawer;}
+function drawerBattleStatus(){if(!state)return"";return `<div class="drawer-battle-status">${state.players.map((p,i)=>`<div class="drawer-fighter ${i===state.turn?"attacking":"defending"}"><span class="drawer-role">${i===state.turn?"Attacking":"Defending"}</span><strong>${p.name}</strong>${heartsMarkup(active(i).hearts)}</div>`).join(`<span class="drawer-versus">VS</span>`)}</div>`;}
+function showDrawer(title,body){el.drawer.innerHTML=`<div class="drawer-head"><h2>${title}</h2><button class="close-btn" data-close>×</button></div>${drawerBattleStatus()}${body}`;el.scrim.classList.remove("hidden");el.drawer.classList.remove("hidden");el.drawer.querySelector("[data-close]").onclick=closeDrawer;}
 function closeDrawer(){el.scrim.classList.add("hidden");el.drawer.classList.add("hidden");}
 function showModal(html,dismiss=true){el.modal.innerHTML=html;el.scrim.classList.remove("hidden");el.modal.classList.remove("hidden");if(dismiss)el.modal.insertAdjacentHTML("beforeend",`<div class="modal-actions"><button class="ghost" data-modal-close>Close</button></div>`),el.modal.querySelector("[data-modal-close]").onclick=closeModal;}
 function closeModal(){el.modal.classList.add("hidden");el.scrim.classList.add("hidden");}

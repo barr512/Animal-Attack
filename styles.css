@@ -37,3 +37,8 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:lin
 @keyframes attacker-pulse{50%{box-shadow:0 0 0 5px rgba(255,154,58,.32),0 0 50px rgba(255,82,15,.9),0 18px 42px #000d}}
 @keyframes arrow-drive{50%{translate:10px 0;filter:brightness(1.25)}}
 @media(max-width:700px){.fighter-zone.is-attacker:before,.fighter-zone.is-defender:before{top:7px;padding:5px 7px;font-size:.53rem;letter-spacing:.08em}.arena.battle-active .arena-core:before{font-size:2rem;margin-bottom:5px}.phase-message{padding:6px;font-size:.56rem;line-height:1.35}}
+
+/* Persistent score strip inside card-selection drawers. */
+.drawer-battle-status{position:sticky;z-index:3;top:-20px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:0 -4px 16px;padding:10px 12px;border:1px solid #3b4553;border-radius:14px;background:rgba(7,12,17,.96);box-shadow:0 8px 24px #000b;backdrop-filter:blur(10px)}
+.drawer-fighter{min-width:0}.drawer-fighter:last-child{text-align:right}.drawer-fighter:last-child .hearts{justify-content:flex-end}.drawer-fighter strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.86rem}.drawer-role{display:block;margin-bottom:2px;color:#ff9f4a;font-size:.58rem;font-weight:950;letter-spacing:.12em;text-transform:uppercase}.drawer-fighter.defending .drawer-role{color:#79c9ff}.drawer-battle-status .hearts{margin-top:3px}.drawer-battle-status .heart{font-size:1rem}.drawer-versus{color:#8f96a3;font-size:.6rem;font-weight:900;letter-spacing:.12em}
+@media(max-width:700px){.drawer-battle-status{top:-20px;margin-bottom:12px;padding:8px 10px}.drawer-fighter strong{font-size:.76rem}.drawer-role{font-size:.5rem}.drawer-battle-status .heart{font-size:.88rem}}
