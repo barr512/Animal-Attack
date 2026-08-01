@@ -78,7 +78,7 @@ function showModal(html,dismiss=true){el.modal.innerHTML=html;el.scrim.classList
 function closeModal(){el.modal.classList.add("hidden");el.scrim.classList.add("hidden");}
 el.scrim.onclick=()=>{closeDrawer();if(!el.modal.classList.contains("hidden"))closeModal();};
 
-function inspectCard(c){showModal(`<div class="modal-card"><div class="card-thumb">${art(c)}</div><div><p class="eyebrow">${c.type}</p><h2>${c.name}</h2><p>${c.text}</p></div></div>`);}
+function inspectCard(c){showModal(`<div class="modal-card"><div class="card-thumb">${art(c)}</div><div><p class="eyebrow">${c.type}</p><h2>${c.name}</h2><p class="ability-copy">${c.text}</p></div></div>`);}
 
 function openSupport(){const p=state.players[state.turn];showDrawer("Choose Support",`<div class="card-grid">${p.support.map(id=>cardButton(CARD_BY_ID[id],`data-support="${id}"`)).join("")}</div><div class="drawer-action"><button class="ghost" data-no-support>Attack without Support</button></div>`);el.drawer.querySelectorAll("[data-support]").forEach(b=>b.onclick=()=>selectSupport(b.dataset.support));el.drawer.querySelector("[data-no-support]").onclick=()=>{state.selectedSupport=null;closeDrawer();render();openAttack();};}
 function selectSupport(id){const c=CARD_BY_ID[id];const commit=(choice=0)=>{state.selectedSupport=id;state.selectedSupportChoice=choice;closeModal();closeDrawer();render();};if(c.choices){showChoices(c.name,c.choices,commit);}else commit();}
