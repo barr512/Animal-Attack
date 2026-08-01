@@ -14,8 +14,8 @@ const attackTraits={
 };
 
 const animatedCharacters={
-  "gorilla-warfare":{ready:"assets/characters/gorilla-warfare-ready.webp",attack:"assets/characters/gorilla-warfare-attack.webp",recoil:"assets/characters/gorilla-warfare-recoil.webp",style:"gorilla"},
-  "kellen-me-softly":{ready:"assets/characters/kellen-me-softly-ready.webp",attack:"assets/characters/kellen-me-softly-attack.webp",recoil:"assets/characters/kellen-me-softly-recoil.webp",style:"kellen"}
+  "gorilla-warfare":{ready:"assets/characters/gorilla-warfare-ready.webp?v=2",attack:"assets/characters/gorilla-warfare-attack.webp?v=2",recoil:"assets/characters/gorilla-warfare-recoil.webp?v=2",style:"gorilla"},
+  "kellen-me-softly":{ready:"assets/characters/kellen-me-softly-ready.webp?v=2",attack:"assets/characters/kellen-me-softly-attack.webp?v=2",recoil:"assets/characters/kellen-me-softly-recoil.webp?v=2",style:"kellen"}
 };
 
 function freshPlayer(name,index,attackDeck,supportDeck,defenseDeck){
