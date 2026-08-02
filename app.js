@@ -174,7 +174,7 @@ function playBattleAnimation(ctx,done){
   el.battle.querySelector(".battle-skip").onclick=finish;
   requestAnimationFrame(()=>el.battle.classList.add("started"));
   later(()=>{if(defenseCard)defenseCard.classList.add("presented");},900);
-  later(()=>{originCard.classList.add("attacking");if(character.style==="kellen")el.battle.classList.add("projectile-fired");},1650);
+  later(()=>{originCard.classList.add("attacking");el.battle.classList.add(character.style==="kellen"?"projectile-fired":"club-thrown");},1650);
   later(()=>{el.battle.classList.add("impacting");if(blocked){targetCard.classList.add("blocked");outcome.textContent=ctx.defense?`${ctx.defense.name} blocks the attack!`:"Attack causes no damage!";}else{targetCard.classList.add(ctx.killed?"defeated":"hit");outcome.textContent=`${target.name} loses ${ctx.damage} heart${ctx.damage===1?"":"s"}!`;}outcome.classList.add("shown");},2550);
   later(()=>{if(active(ctx.ai).hearts===0)originCard.classList.add("defeated");},3350);
   later(finish,4700);
