@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 72" role="img" aria-label="Spiked wooden club">
+  <defs><linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d99a4c"/><stop offset=".48" stop-color="#925528"/><stop offset="1" stop-color="#4b2914"/></linearGradient></defs>
+  <path d="M11 36 30 18 116 10 145 23 148 48 119 61 30 54Z" fill="url(#wood)" stroke="#351b0d" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M142 28h30c6 0 6 16 0 16h-30Z" fill="#70401e" stroke="#351b0d" stroke-width="6" stroke-linejoin="round"/>
+  <path d="m42 18 8-15 9 14M82 13 90 1l8 12M111 14l10-12 5 16M46 55l8 14 9-13M91 59l8 12 7-14" fill="#d7c28d" stroke="#4d381c" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M35 31c30-7 62-8 91-3M36 43c28 7 58 8 91 2" fill="none" stroke="#e7b36b" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+</svg>
