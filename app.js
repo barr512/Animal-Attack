@@ -17,16 +17,22 @@ const animatedCharacters={
   "gorilla-warfare":{ready:"assets/characters/gorilla-warfare-ready.webp?v=2",attack:"assets/characters/gorilla-warfare-attack.webp?v=2",recoil:"assets/characters/gorilla-warfare-recoil.webp?v=2",style:"gorilla"},
   "kellen-me-softly":{ready:"assets/characters/kellen-me-softly-ready.webp?v=2",attack:"assets/characters/kellen-me-softly-attack.webp?v=2",recoil:"assets/characters/kellen-me-softly-recoil.webp?v=2",style:"kellen"}
 };
+const enhancedCardArtwork={
+  "pantry-raid":"assets/cards/enhanced/pantry-raid-v1.webp",
+  "goatastic":"assets/cards/enhanced/goatastic-v1.webp",
+  "wall-russ":"assets/cards/enhanced/wall-russ-v1.webp",
+  "flow-backwards":"assets/cards/enhanced/flow-backwards-v1.webp"
+};
 
-function freshPlayer(name,index,attackDeck,supportDeck,defenseDeck){
-  return {name,index,attacks:attackDeck.splice(0,2).map(id=>({id,hearts:3,specialUsed:false,specialDisabled:false,dead:false,unrevivable:false})),active:0,support:supportDeck.splice(0,2),defense:defenseDeck.splice(0,2),deadAttacks:[],skipTurns:0,defenseBlockedNext:false,glunicornStage:0};
+function freshPlayer(name,index,attackDeck,supportDeck,defenseDeck,startingSupport=null,startingDefense=null){
+  return {name,index,attacks:attackDeck.splice(0,2).map(id=>({id,hearts:3,specialUsed:false,specialDisabled:false,dead:false,unrevivable:false})),active:0,support:startingSupport||supportDeck.splice(0,2),defense:startingDefense||defenseDeck.splice(0,2),deadAttacks:[],skipTurns:0,defenseBlockedNext:false,glunicornStage:0};
 }
 
 function startGame(names){
-  const attacks=shuffle(ATTACK_CARDS.map(c=>c.id).filter(id=>!["gorilla-warfare","kellen-me-softly"].includes(id))), support=shuffle(SUPPORT_CARDS.map(c=>c.id)), defense=shuffle(DEFENSE_CARDS.map(c=>c.id));
+  const forcedSupports=["pantry-raid","goatastic"],forcedDefenses=["wall-russ","flow-backwards"],attacks=shuffle(ATTACK_CARDS.map(c=>c.id).filter(id=>!["gorilla-warfare","kellen-me-softly"].includes(id))),support=shuffle(SUPPORT_CARDS.map(c=>c.id).filter(id=>!forcedSupports.includes(id))),defense=shuffle(DEFENSE_CARDS.map(c=>c.id).filter(id=>!forcedDefenses.includes(id)));
   state={players:[],supportDeck:support,defenseDeck:defense,supportDiscard:[],defenseDiscard:[],turn:0,viewer:0,phase:"setup",selectedSupport:null,selectedSupportChoice:0,selectedAttackMode:null,forcedDefense:null,playedDefense:null,log:[],winner:null};
   const player1Attacks=["gorilla-warfare",attacks.shift()],player2Attacks=["kellen-me-softly",attacks.shift()];
-  state.players=[freshPlayer(names[0],0,player1Attacks,support,defense),freshPlayer(names[1],1,player2Attacks,support,defense)];
+  state.players=[freshPlayer(names[0],0,player1Attacks,support,defense,forcedSupports),freshPlayer(names[1],1,player2Attacks,support,defense,null,forcedDefenses)];
   el.setup.classList.add("hidden");el.game.classList.remove("hidden");
   beginTurn();
 }
@@ -51,10 +57,11 @@ function discardRandom(type,player){const hand=state.players[player][type],id=ra
 
 function spriteStyle(c){const col=c.slot%3,row=Math.floor(c.slot/3),x=col===0?0:col===1?50:100,y=c.sheetRows===1?0:(row/(c.sheetRows-1))*100;return `--sheet:url('assets/sprites/sheet-${String(c.sheet).padStart(2,"0")}.webp');--size-y:${c.sheetRows*100}%;--x:${x}%;--y:${y}%`;}
 function art(c){return `<div class="card-art" style="${spriteStyle(c)}"></div>`;}
-function illustratedAttackContent(c){const portrait=animatedCharacters[c.id]?.ready;return portrait?`<div class="battle-card-type">ATTACK</div><div class="battle-portrait"><img src="${portrait}" alt="${c.name}"></div><div class="battle-card-rule">${c.text}</div>`:null;}
-function battleCard(c,className){const illustrated=illustratedAttackContent(c);return `<div class="battle-card ${className}${illustrated?" illustrated-attack":""}">${illustrated||art(c)}<span>${c.name}</span></div>`;}
-function cardButton(c,attrs="",compact=false){return `<button class="hand-card" ${attrs}> <div class="card-thumb">${art(c)}</div><h3>${c.name}</h3>${compact?"":`<p>${c.text}</p>`}</button>`;}
-function activeCardMarkup(playerIndex){const c=cardOfAttack(playerIndex),illustrated=illustratedAttackContent(c);return `<button class="active-card${illustrated?" illustrated-attack":""}" data-inspect="${c.id}" aria-label="Inspect ${c.name}">${illustrated||art(c)}<span class="card-badge">${c.name}</span></button>`;}
+function illustratedCardContent(c){const portrait=animatedCharacters[c.id]?.ready||enhancedCardArtwork[c.id];return portrait?`<div class="battle-card-type">${c.type.toUpperCase()}</div><div class="battle-portrait"><img src="${portrait}" alt="${c.name}"></div><div class="battle-card-rule">${c.text}</div>`:null;}
+function illustratedClass(c){return c.type==="attack"?"illustrated-attack":`illustrated-${c.type}`;}
+function battleCard(c,className){const illustrated=illustratedCardContent(c);return `<div class="battle-card ${className}${illustrated?` ${illustratedClass(c)}`:""}">${illustrated||art(c)}<span>${c.name}</span></div>`;}
+function cardButton(c,attrs="",compact=false){const illustrated=illustratedCardContent(c);return `<button class="hand-card" ${attrs}> <div class="card-thumb${illustrated?` ${illustratedClass(c)}`:""}">${illustrated||art(c)}${illustrated?`<span class="card-badge">${c.name}</span>`:""}</div><h3>${c.name}</h3>${compact?"":`<p>${c.text}</p>`}</button>`;}
+function activeCardMarkup(playerIndex){const c=cardOfAttack(playerIndex),illustrated=illustratedCardContent(c);return `<button class="active-card${illustrated?` ${illustratedClass(c)}`:""}" data-inspect="${c.id}" aria-label="Inspect ${c.name}">${illustrated||art(c)}<span class="card-badge">${c.name}</span></button>`;}
 function heartsMarkup(n){return `<div class="hearts">${[0,1,2].map(i=>`<span class="heart ${i<n?"live":""}">♥</span>`).join("")}</div>`;}
 
 function fighterMarkup(index,isBottom){const p=state.players[index],a=active(index);return `<div class="fighter-meta ${isBottom?"":"right"}"><div class="fighter-name">${p.name}</div><div class="fighter-state">${aliveAttackCount(index)} attacker${aliveAttackCount(index)===1?"":"s"} remaining</div>${heartsMarkup(a.hearts)}</div>${activeCardMarkup(index)}<div class="reserve-stack"><span class="mini-back"></span><span>${Math.max(0,aliveAttackCount(index)-1)} reserve</span></div>`;}
@@ -96,7 +103,7 @@ function showModal(html,dismiss=true){el.modal.innerHTML=html;el.scrim.classList
 function closeModal(){el.modal.classList.add("hidden");el.scrim.classList.add("hidden");}
 el.scrim.onclick=()=>{closeDrawer();if(!el.modal.classList.contains("hidden"))closeModal();};
 
-function inspectCard(c){const illustrated=illustratedAttackContent(c);showModal(`<div class="modal-card${illustrated?" illustrated-modal":""}"><div class="card-thumb${illustrated?" illustrated-attack":""}">${illustrated||art(c)}${illustrated?`<span class="card-badge">${c.name}</span>`:""}</div><div class="modal-card-copy"><p class="eyebrow">${c.type}</p><h2>${c.name}</h2><p class="ability-copy">${c.text}</p></div></div>`);}
+function inspectCard(c){const illustrated=illustratedCardContent(c);showModal(`<div class="modal-card${illustrated?" illustrated-modal":""}"><div class="card-thumb${illustrated?` ${illustratedClass(c)}`:""}">${illustrated||art(c)}${illustrated?`<span class="card-badge">${c.name}</span>`:""}</div><div class="modal-card-copy"><p class="eyebrow">${c.type}</p><h2>${c.name}</h2><p class="ability-copy">${c.text}</p></div></div>`);}
 
 function openSupport(){const p=state.players[state.turn];showDrawer("Choose Support",`<div class="card-grid">${p.support.map(id=>cardButton(CARD_BY_ID[id],`data-support="${id}"`)).join("")}</div><div class="drawer-action"><button class="ghost" data-no-support>Attack without Support</button></div>`);el.drawer.querySelectorAll("[data-support]").forEach(b=>b.onclick=()=>selectSupport(b.dataset.support));el.drawer.querySelector("[data-no-support]").onclick=()=>{state.selectedSupport=null;closeDrawer();render();openAttack();};}
 function selectSupport(id){const c=CARD_BY_ID[id];const commit=(choice=0)=>{state.selectedSupport=id;state.selectedSupportChoice=choice;closeModal();closeDrawer();render();};if(c.choices){showChoices(c.name,c.choices,commit);}else commit();}
@@ -106,9 +113,10 @@ function openAttack(){const a=active(state.turn),c=CARD_BY_ID[a.id],specialAvail
 
 function declareAttack(mode){closeDrawer();state.selectedAttackMode=mode;const attackCard=cardOfAttack(state.turn);if(mode==="special"&&attackCard.choices){showChoices(attackCard.name,attackCard.choices,(choice)=>{state.attackChoice=choice;closeModal();prepareAttack();});}else{state.attackChoice=0;prepareAttack();}}
 
-function makeContext(){const ai=state.turn,di=opponentOf(ai);return {ai,di,attacker:state.players[ai],defender:state.players[di],attack:cardOfAttack(ai),support:state.selectedSupport?CARD_BY_ID[state.selectedSupport]:null,defense:null,isSpecial:state.selectedAttackMode==="special",power:1,block:0,counter:false,allowDefense:true,noAttack:false,attackerGain:0,defenderGain:0,heartRewards:[0,0],cardRewards:[{support:0,defense:0},{support:0,defense:0}],damage:0,killed:false,defensePlayed:false,preventCounter:false,noDefenseDraw:false,extraSupport:0,extraDefense:0,notes:[],snapshot:clone(state.players)};}
+function makeContext(){const ai=state.turn,di=opponentOf(ai);return {ai,di,attacker:state.players[ai],defender:state.players[di],attack:cardOfAttack(ai),support:state.selectedSupport?CARD_BY_ID[state.selectedSupport]:null,defense:null,isSpecial:state.selectedAttackMode==="special",power:1,block:0,counter:false,allowDefense:true,noAttack:false,attackerGain:0,defenderGain:0,heartRewards:[0,0],animatedHeartRewards:[0,0],cardRewards:[{support:0,defense:0},{support:0,defense:0}],damage:0,killed:false,defensePlayed:false,preventCounter:false,noDefenseDraw:false,extraSupport:0,extraDefense:0,notes:[],snapshot:clone(state.players)};}
 
-function prepareAttack(){const ctx=makeContext();state.context=ctx;if(ctx.isSpecial){active(ctx.ai).specialUsed=true;applyAttackSpecial(ctx,ctx.attack.effect);}applySupportPre(ctx);if(ctx.paused)return;const immediate=ctx.heartRewards.map((hearts,i)=>hearts?`<li><b>${state.players[i].name}</b> gained ${hearts} heart${hearts===1?"":"s"} and now has ${active(i).hearts}.</li>`:"").filter(Boolean);if(immediate.length){render();showModal(`<h2>Immediate ability</h2><ul class="immediate-results">${immediate.join("")}</ul>${drawerBattleStatus()}<div class="modal-actions"><button class="primary" data-continue-attack>Continue</button></div>`,false);el.modal.querySelector("[data-continue-attack]").onclick=()=>{closeModal();continueAttackPreparation(ctx);};return;}continueAttackPreparation(ctx);}
+function prepareAttack(){const ctx=makeContext();state.context=ctx;if(ctx.isSpecial){active(ctx.ai).specialUsed=true;applyAttackSpecial(ctx,ctx.attack.effect);}applySupportPre(ctx);if(ctx.paused)return;if(ctx.support?.effect==="pantryRaid"||(ctx.support?.effect==="goatastic"&&!ctx.isSpecial)){playSupportPreparation(ctx,()=>continueAfterSupportPreparation(ctx));return;}continueAfterSupportPreparation(ctx);}
+function continueAfterSupportPreparation(ctx){const immediate=ctx.heartRewards.map((hearts,i)=>hearts?`<li><b>${state.players[i].name}</b> gained ${hearts} heart${hearts===1?"":"s"} and now has ${active(i).hearts}.</li>`:"").filter(Boolean);if(immediate.length){render();showModal(`<h2>Immediate ability</h2><ul class="immediate-results">${immediate.join("")}</ul>${drawerBattleStatus()}<div class="modal-actions"><button class="primary" data-continue-attack>Continue</button></div>`,false);el.modal.querySelector("[data-continue-attack]").onclick=()=>{closeModal();continueAttackPreparation(ctx);};return;}continueAttackPreparation(ctx);}
 function continueAttackPreparation(ctx){if(ctx.defender.defenseBlockedNext){ctx.allowDefense=false;ctx.defender.defenseBlockedNext=false;}if(ctx.noAttack){resolveAttack(ctx,null);return;}if(!ctx.allowDefense||(!ctx.defender.defense.length&&!state.forcedDefense)){resolveAttack(ctx,null);return;}state.phase="defense";passTo(ctx.di,()=>{render();openDefense();});}
 
 function applyAttackSpecial(ctx,effect){switch(effect){
@@ -124,7 +132,7 @@ function applyAttackSpecial(ctx,effect){switch(effect){
 }}
 
 function applySupportPre(ctx){if(!ctx.support)return;const e=ctx.support.effect,choice=state.selectedSupportChoice;switch(e){
-  case"warHog":if(ctx.isSpecial){ctx.support=null;state.selectedSupport=null;}break;case"pantryRaid":{const id=randomTake(ctx.defender.defense);if(id)ctx.attacker.defense.push(id);}break;
+  case"warHog":if(ctx.isSpecial){ctx.support=null;state.selectedSupport=null;}break;case"pantryRaid":{const id=randomTake(ctx.defender.defense);if(id){ctx.attacker.defense.push(id);ctx.flags={...(ctx.flags||{}),pantryStolen:true};}}break;
   case"pelicannon":if(choice===0)ctx.power=2;else discardRandom("defense",ctx.di);break;case"danGiraffe":ctx.power=2;ctx.flags={...(ctx.flags||{}),dan:true};break;
   case"skiHorse":if(aliveAttackCount(ctx.ai)===1&&active(ctx.di).hearts>1)ctx.allowDefense=false;break;case"miniPearl":ctx.attackerGain+=heal(ctx.ai,1);break;
   case"grasshooper":if(active(ctx.ai).hearts<active(ctx.di).hearts)ctx.allowDefense=false;break;case"dolph":if(ctx.isSpecial)ctx.allowDefense=false;break;
@@ -134,7 +142,7 @@ function applySupportPre(ctx){if(!ctx.support)return;const e=ctx.support.effect,
   case"telephant":active(ctx.ai).specialUsed=false;break;case"superMonkey":ctx.attackerGain+=heal(ctx.ai,1);ctx.preventCounter=true;break;
   case"geckommander":if(ctx.attacker.support.length<2){const id=randomTake(ctx.defender.support);if(id){ctx.attacker.support.push(id);recordCardReward(ctx,ctx.ai,"support");}}if(ctx.attacker.defense.length<2){const id=randomTake(ctx.defender.defense);if(id){ctx.attacker.defense.push(id);recordCardReward(ctx,ctx.ai,"defense");}}break;
   case"immunityDove":ctx.preventCounter=true;if(active(ctx.ai).hearts<2)ctx.allowDefense=false;break;case"combOver":ctx.attackerGain+=heal(ctx.ai,1);break;
-  case"brokenSparrow":if(active(ctx.ai).hearts<2)ctx.attackerGain+=heal(ctx.ai,1);break;case"goatastic":case"starkRaven":ctx.power=2;break;
+  case"brokenSparrow":if(active(ctx.ai).hearts<2)ctx.attackerGain+=heal(ctx.ai,1);break;case"goatastic":if(!ctx.isSpecial)ctx.power=2;break;case"starkRaven":ctx.power=2;break;
   case"bombsAway":swapRandomDefense(ctx.ai,ctx.di);break;case"slobster":ctx.defenderGain+=heal(ctx.di,1);chooseOwnDefenseToReturn(ctx);break;
   case"butIDontLie":if(active(ctx.ai).hearts<3)ctx.allowDefense=false;break;case"sonOfBee":ctx.attackerGain+=heal(ctx.ai,1);ctx.defenderGain+=heal(ctx.di,1);break;
 }}
@@ -153,7 +161,7 @@ function resolveAttack(ctx,defense){
   if(ctx.support?.effect==="warHog"&&defense){if(["spayingMantis","barack","oldWhale","scowlingOwl","toucan","counterBattack","flamingoalie","starwish","poleVulture","flowBackwards"].includes(defense.effect))ctx.attackerGain+=heal(ctx.ai,1);else ctx.power=2;}
   if(ctx.support?.effect==="sadHamster"&&defense)ctx.attackerGain+=heal(ctx.ai,2);
   if(ctx.support?.effect==="wellDung"&&defense)heal(ctx.ai,99);
-  if(ctx.support?.effect==="pantryRaid"&&defense)draw("support",ctx.di,1,true);
+  if(ctx.support?.effect==="pantryRaid"&&defense)ctx.pantryRaidSupportDraw=draw("support",ctx.di,1,true);
   if(ctx.support?.effect==="mongooseGoose"&&defense)ctx.flags={...(ctx.flags||{}),mongoose:true};
   if(ctx.support?.effect==="blastypus"&&defense)ctx.noDefenseDraw=true;
   if(ctx.support?.effect==="centipede"&&defense)ctx.defender.defenseBlockedNext=true;
@@ -165,20 +173,33 @@ function resolveAttack(ctx,defense){
   playBattleAnimation(ctx,()=>{if(ctx.flags?.giveSupport&&ctx.defender.support.length)chooseKangaroothlessSupport(ctx);else completeResolvedAttack(ctx);});
 }
 
+function playSupportPreparation(ctx,done){
+  const pantry=ctx.support.effect==="pantryRaid",direction=ctx.ai===0?"from-left":"from-right",originZone=ctx.ai===0?el.opp:el.player,originCard=originZone.querySelector(".active-card");
+  el.battle.className=`battle-scene support-scene ${direction} ${pantry?"pantry-scene":"goatastic-scene"}`;
+  el.battle.innerHTML=`<button class="battle-skip" type="button">Skip</button><div class="support-showcase">${battleCard(ctx.support,"support-effect-card")}</div>${pantry?`<div class="pantry-mouse" aria-hidden="true">🐭</div><div class="stolen-defense-card" aria-hidden="true"><b>DEFENSE</b></div>`:""}<div class="support-alert"></div>`;
+  const alert=el.battle.querySelector(".support-alert");let finished=false;const timers=[];const later=(fn,ms)=>timers.push(setTimeout(fn,ms));const finish=()=>{if(finished)return;finished=true;timers.forEach(clearTimeout);originCard.classList.remove("goat-boosted");el.battle.classList.add("ending");setTimeout(()=>{el.battle.className="battle-scene hidden";el.battle.innerHTML="";done();},280);};
+  el.battle.querySelector(".battle-skip").onclick=finish;requestAnimationFrame(()=>el.battle.classList.add("started"));
+  if(pantry){later(()=>el.battle.classList.add("stealing"),700);later(()=>{alert.textContent=ctx.flags?.pantryStolen?"Defense card stolen!":"No Defense card available to steal.";alert.classList.add("shown");},1650);later(finish,3000);}else{later(()=>{originCard.classList.add("goat-boosted");alert.textContent="Basic attack boosted to 2 hearts!";alert.classList.add("shown");},850);later(finish,2850);}
+}
+
 function playBattleAnimation(ctx,done){
   const character=animatedCharacters[ctx.attack.id];if(!character){done();return;}
-  const direction=ctx.ai===0?"from-left":"from-right",target=cardOfAttack(ctx.di),blocked=ctx.damage===0;
-  el.battle.className=`battle-scene table-effects ${direction} ${character.style}`;
+  const direction=ctx.ai===0?"from-left":"from-right",target=cardOfAttack(ctx.di),blocked=ctx.damage===0,defenseEffect=ctx.defense?.effect||"none",partialDefense=ctx.block>0&&ctx.damage>0;
+  const losses=[0,1].map(i=>Math.max(0,ctx.snapshot[i].attacks[ctx.snapshot[i].active].hearts-active(i).hearts)),gains=[0,1].map(i=>Math.max(0,ctx.heartRewards[i]-(ctx.animatedHeartRewards[i]||0)));
+  el.battle.className=`battle-scene table-effects ${direction} ${character.style} defense-${defenseEffect} ${partialDefense?"partial-defense":"full-defense"}`;
   const projectile=character.style==="gorilla"?`<img class="club-projectile-image" src="assets/effects/gorilla-club.svg?v=1" alt="">`:`<span>♪</span><span>♫</span><span>♪</span>`;
-  el.battle.innerHTML=`<button class="battle-skip" type="button">Skip</button>${ctx.defense?battleCard(ctx.defense,"battle-defense"):""}<div class="battle-projectile" aria-hidden="true">${projectile}</div><div class="battle-impact"></div><div class="battle-outcome"></div>`;
-  const originZone=ctx.ai===0?el.opp:el.player,targetZone=ctx.di===0?el.opp:el.player,originCard=originZone.querySelector(".active-card"),targetCard=targetZone.querySelector(".active-card"),defenseCard=el.battle.querySelector(".battle-defense"),projectileEl=el.battle.querySelector(".battle-projectile"),impactEl=el.battle.querySelector(".battle-impact"),outcome=el.battle.querySelector(".battle-outcome");
-  const placeEffect=()=>{const arenaRect=el.arena.getBoundingClientRect(),from=originCard.getBoundingClientRect(),to=targetCard.getBoundingClientRect(),startX=ctx.ai===0?from.right-arenaRect.left-12:from.left-arenaRect.left-98,endX=ctx.ai===0?to.left-arenaRect.left+18:to.right-arenaRect.left-18,startY=from.top-arenaRect.top+from.height*.42,endY=to.top-arenaRect.top+to.height*.42;projectileEl.style.left=`${startX}px`;projectileEl.style.right="auto";projectileEl.style.top=`${startY}px`;projectileEl.style.setProperty("--travel-x",`${endX-startX}px`);projectileEl.style.setProperty("--travel-y",`${endY-startY}px`);impactEl.style.left=`${endX}px`;impactEl.style.top=`${endY}px`;};
-  let finished=false;const timers=[];const later=(fn,ms)=>timers.push(setTimeout(fn,ms));const finish=()=>{if(finished)return;finished=true;timers.forEach(clearTimeout);originCard.classList.remove("attacking");targetCard.classList.remove("hit","blocked","defeated");el.battle.classList.add("ending");setTimeout(()=>{el.battle.className="battle-scene hidden";el.battle.innerHTML="";done();},280);};
+  const lostHearts=losses.flatMap((count,i)=>Array.from({length:count},(_,n)=>`<span class="lost-heart" data-player="${i}" data-order="${n}">♥</span>`)).join(""),gainedHearts=gains.flatMap((count,i)=>Array.from({length:count},(_,n)=>`<span class="gained-heart" data-player="${i}" data-order="${n}">♥</span>`)).join("");
+  el.battle.innerHTML=`<button class="battle-skip" type="button">Skip</button>${ctx.defense?battleCard(ctx.defense,"battle-defense"):""}<div class="battle-projectile" aria-hidden="true">${projectile}</div>${defenseEffect==="wallRuss"?`<div class="wall-barrier" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>`:""}${defenseEffect==="flowBackwards"?`<div class="flow-howl" aria-hidden="true"><i></i><i></i><i></i></div>`:""}<div class="heart-effects" aria-hidden="true">${lostHearts}${gainedHearts}</div><div class="battle-impact"></div><div class="battle-outcome"></div>`;
+  const zones=[el.opp,el.player],cards=zones.map(z=>z.querySelector(".active-card")),originCard=cards[ctx.ai],targetCard=cards[ctx.di],defenseCard=el.battle.querySelector(".battle-defense"),projectileEl=el.battle.querySelector(".battle-projectile"),impactEl=el.battle.querySelector(".battle-impact"),outcome=el.battle.querySelector(".battle-outcome");
+  const placeEffect=()=>{const arenaRect=el.arena.getBoundingClientRect(),rects=cards.map(c=>c.getBoundingClientRect()),from=rects[ctx.ai],to=rects[ctx.di],startX=ctx.ai===0?from.right-arenaRect.left-12:from.left-arenaRect.left-98,endX=ctx.ai===0?to.left-arenaRect.left+18:to.right-arenaRect.left-18,startY=from.top-arenaRect.top+from.height*.42,endY=to.top-arenaRect.top+to.height*.42;projectileEl.style.left=`${startX}px`;projectileEl.style.right="auto";projectileEl.style.top=`${startY}px`;projectileEl.style.setProperty("--travel-x",`${endX-startX}px`);projectileEl.style.setProperty("--travel-y",`${endY-startY}px`);impactEl.style.left=`${endX}px`;impactEl.style.top=`${endY}px`;el.battle.querySelectorAll(".lost-heart").forEach(h=>{const r=rects[Number(h.dataset.player)],order=Number(h.dataset.order),x=r.left-arenaRect.left+r.width*.5,y=r.top-arenaRect.top+r.height*.38;h.style.left=`${x}px`;h.style.top=`${y}px`;h.style.setProperty("--burst-x",`${(order%3-1)*48}px`);h.style.setProperty("--burst-y",`${-55-order*14}px`);});el.battle.querySelectorAll(".gained-heart").forEach(h=>{const r=rects[Number(h.dataset.player)],order=Number(h.dataset.order),x=r.left-arenaRect.left+r.width*.5,y=r.top-arenaRect.top+r.height*.38;h.style.left=`${arenaRect.width*.5+(order-1)*32}px`;h.style.top="16%";h.style.setProperty("--gain-x",`${x-arenaRect.width*.5-(order-1)*32}px`);h.style.setProperty("--gain-y",`${y-arenaRect.height*.16}px`);});};
+  gains.forEach((n,i)=>{ctx.animatedHeartRewards[i]=(ctx.animatedHeartRewards[i]||0)+n;});
+  let finished=false;const timers=[];const later=(fn,ms)=>timers.push(setTimeout(fn,ms));const finish=()=>{if(finished)return;finished=true;timers.forEach(clearTimeout);originCard.classList.remove("attacking","hit");targetCard.classList.remove("hit","blocked","defeated");el.battle.classList.add("ending");setTimeout(()=>{el.battle.className="battle-scene hidden";el.battle.innerHTML="";done();},280);};
   el.battle.querySelector(".battle-skip").onclick=finish;
   placeEffect();requestAnimationFrame(()=>el.battle.classList.add("started"));
   later(()=>{if(defenseCard)defenseCard.classList.add("presented");},900);
+  later(()=>{if(["wallRuss","flowBackwards"].includes(defenseEffect))el.battle.classList.add("defense-activated");},1350);
   later(()=>{originCard.classList.add("attacking");el.battle.classList.add(character.style==="kellen"?"projectile-fired":"club-thrown");},1650);
-  later(()=>{el.battle.classList.add("impacting");if(blocked){targetCard.classList.add("blocked");outcome.textContent=ctx.defense?`${ctx.defense.name} blocks the attack!`:"Attack causes no damage!";}else{targetCard.classList.add(ctx.killed?"defeated":"hit");outcome.textContent=`${target.name} loses ${ctx.damage} heart${ctx.damage===1?"":"s"}!`;}outcome.classList.add("shown");},2750);
+  later(()=>{el.battle.classList.add("impacting");if(losses[ctx.ai])originCard.classList.add("hit");if(blocked){targetCard.classList.add("blocked");outcome.textContent=ctx.defense?`${ctx.defense.name} blocks the attack!`:"Attack causes no damage!";}else{targetCard.classList.add(ctx.killed?"defeated":"hit");outcome.textContent=partialDefense?`${ctx.defense.name} blocks 1 heart. ${target.name} still loses ${ctx.damage}!`:`${target.name} loses ${ctx.damage} heart${ctx.damage===1?"":"s"}!`;}outcome.classList.add("shown");},2750);
   later(()=>{if(active(ctx.ai).hearts===0)originCard.classList.add("defeated");},3350);
   later(finish,4700);
 }
@@ -223,7 +244,7 @@ function finishTurn(ctx){
   if(!ctx.noDefenseDraw&&ctx.defensePlayed)draw("defense",ctx.di,1);draw("defense",ctx.di,ctx.extraDefense,true);if(ctx.support)draw("support",ctx.ai,1);draw("support",ctx.ai,ctx.extraSupport,true);
   log(`${ctx.attacker.name}'s ${ctx.attack.name} dealt ${ctx.damage} heart${ctx.damage===1?"":"s"}${ctx.defense?` against ${ctx.defense.name}`:""}.`);
   state.phase=state.winner!==null?"over":"result";state.viewer=ctx.ai;render();
-  const rewards=[];state.players.forEach((p,i)=>{const hearts=ctx.heartRewards[i],support=ctx.cardRewards[i].support,defense=ctx.cardRewards[i].defense;if(hearts)rewards.push(`<li><b>${p.name}</b> gained ${hearts} heart${hearts===1?"":"s"}.</li>`);if(support)rewards.push(`<li><b>${p.name}</b> gained ${support} additional Support card${support===1?"":"s"}.</li>`);if(defense)rewards.push(`<li><b>${p.name}</b> gained ${defense} additional Defense card${defense===1?"":"s"}.</li>`);});
+  const rewards=[];state.players.forEach((p,i)=>{const hearts=ctx.heartRewards[i],support=ctx.cardRewards[i].support,defense=ctx.cardRewards[i].defense;if(hearts)rewards.push(`<li><b>${p.name}</b> gained ${hearts} heart${hearts===1?"":"s"}.</li>`);if(support)rewards.push(i===ctx.di&&ctx.pantryRaidSupportDraw?`<li class="pantry-reward"><b>${p.name}</b> drew ${support} Support card because a Defense card was played against <b>Pantry Raid</b>.</li>`:`<li><b>${p.name}</b> gained ${support} additional Support card${support===1?"":"s"}.</li>`);if(defense)rewards.push(`<li><b>${p.name}</b> gained ${defense} additional Defense card${defense===1?"":"s"}.</li>`);});
   const rewardSummary=rewards.length?`<div class="result-rewards"><h3>Ability rewards</h3><ul>${rewards.join("")}</ul></div>`:`<div class="result-rewards quiet">No additional hearts or cards were gained.</div>`;
   rewards.forEach(item=>log(item.replace(/<[^>]+>/g,"")));
   const summary=state.winner!==null?`<h2>${state.players[state.winner].name} wins!</h2><p>The arena belongs to ${cardOfAttack(state.winner).name}.</p>${rewardSummary}<div class="modal-actions"><button class="primary" data-new>New game</button></div>`:`<h2>Attack resolved</h2><p>${ctx.attacker.name} dealt <b>${ctx.damage}</b> heart${ctx.damage===1?"":"s"}. ${ctx.defense?`${ctx.defender.name} used ${ctx.defense.name}.`:"No Defense was played."}</p>${rewardSummary}<div class="modal-actions"><button class="primary" data-next>Next turn</button></div>`;
